@@ -1,5 +1,7 @@
 # GatheRs Rank
 
+![Example of the UI](https://github.com/morosanmihail/gathers_rank/blob/main/images/admin1.png?raw=true)
+
 Self-hosted league/tournament tracker. Players report match results; opponents confirm them. Admins manage tournaments and players via a token-based API.
 
 ## Stack
@@ -81,3 +83,8 @@ All player/admin routes require `Authorization: Bearer <token>`.
 | GET/POST | `/api/admin/games` | Admin | List / create game |
 | DELETE | `/api/admin/games/:id` | Admin | Delete game |
 | POST | `/api/admin/games/:id/confirm` | Admin | Force-confirm game |
+
+
+
+![Example of the UI](https://github.com/morosanmihail/gathers_rank/blob/main/images/ranking1.png?raw=true)
+![Example of the UI](https://github.com/morosanmihail/gathers_rank/blob/main/images/admin2.png?raw=true)
