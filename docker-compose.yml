@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - league_db:/app/data
+    environment:
+      DATABASE_URL: sqlite:/app/data/league.db
+      RUST_LOG: info
+      # ADMIN_TOKEN: set-this-before-first-boot
+    restart: unless-stopped
+
+volumes:
+  league_db:
