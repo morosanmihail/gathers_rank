@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Player Portal — Sealed League</title>
+<style>
+:root {
+  --bg:#0e0e12; --surface:#1a1a24; --surface2:#20202e; --border:#2e2e42;
+  --accent:#7c5cbf; --accent2:#c4a84f; --text:#e8e8f0; --muted:#7a7a90;
+  --win:#4caf7d; --loss:#e05c5c; --draw:#c4a84f; --pending:#6a9fd8;
+  --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:1.1rem;color:var(--accent2)}
+header nav{display:flex;gap:1.25rem;font-size:.85rem}
+header nav a{color:var(--muted);text-decoration:none}
+header nav a:hover{color:var(--text)}
+
+main{max-width:720px;margin:0 auto;padding:1.5rem 1rem}
+
+/* auth */
+#authSection{margin-top:3rem}
+.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;max-width:400px;margin:0 auto}
+.auth-box h2{color:var(--accent2);margin-bottom:1.25rem;font-size:1.1rem}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.72rem;font-weight:600;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:1rem}
+
+/* standing */
+.standing-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:.5rem}
+.stat{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:.75rem;text-align:center}
+.stat-val{font-size:1.35rem;font-weight:700}
+.stat-label{font-size:.7rem;color:var(--muted);margin-top:.2rem;letter-spacing:.04em}
+
+/* form */
+.field{margin-bottom:.75rem}
+.field label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.3rem}
+.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:.45rem .65rem;border-radius:6px;font-size:.88rem}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.score-grid{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;gap:.5rem;align-items:end;margin-bottom:.5rem}
+.score-sep{color:var(--muted);text-align:center;padding-bottom:.45rem;font-size:1.1rem}
+.score-grid .field input{text-align:center;font-family:monospace;font-size:1.05rem;font-weight:600}
+.score-hint{font-size:.75rem;color:var(--muted);margin-bottom:.75rem}
+.preview{font-family:monospace;padding:.4rem .75rem;background:rgba(196,168,79,.06);border:1px solid rgba(196,168,79,.15);border-radius:6px;color:var(--accent2);margin-bottom:.75rem;font-size:.9rem}
+.preview.err{background:rgba(224,92,92,.06);border-color:rgba(224,92,92,.2);color:var(--loss)}
+
+/* buttons */
+button{cursor:pointer;border:none;border-radius:6px;font-size:.85rem;font-weight:500;padding:.45rem 1rem}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#6a4dab}
+.btn-success{background:rgba(76,175,125,.15);color:var(--win);border:1px solid rgba(76,175,125,.3)}
+.btn-success:hover{background:rgba(76,175,125,.25)}
+.btn-danger{background:rgba(224,92,92,.12);color:var(--loss);border:1px solid rgba(224,92,92,.25)}
+.btn-danger:hover{background:rgba(224,92,92,.22)}
+.btn-sm{padding:.28rem .65rem;font-size:.78rem}
+
+/* messages */
+.msg{padding:.55rem .75rem;border-radius:6px;font-size:.82rem;margin-top:.6rem;display:none}
+.msg.ok{background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.25);color:var(--win);display:block}
+.msg.err{background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.25);color:var(--loss);display:block}
+
+/* game items */
+.game-item{padding:.75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.6rem}
+.game-item:last-child{margin-bottom:0}
+.game-header{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.game-title{font-size:.9rem;line-height:1.4}
+.game-meta{font-size:.75rem;color:var(--muted);margin-top:.3rem}
+.game-actions{display:flex;gap:.4rem;margin-top:.6rem}
+.badge{display:inline-block;font-size:.68rem;padding:.18em .5em;border-radius:4px;font-weight:600;white-space:nowrap}
+.badge-confirmed{background:rgba(76,175,125,.15);color:var(--win)}
+.badge-pending-out{background:rgba(106,159,216,.12);color:var(--pending);border:1px solid rgba(106,159,216,.25)}
+.badge-pending-in{background:rgba(196,168,79,.12);color:var(--draw);border:1px solid rgba(196,168,79,.3)}
+.badge-disputed{background:rgba(224,92,92,.12);color:var(--loss);border:1px solid rgba(224,92,92,.2)}
+.badge-win{background:rgba(76,175,125,.15);color:var(--win)}
+.badge-loss{background:rgba(224,92,92,.12);color:var(--loss)}
+.badge-draw{background:rgba(196,168,79,.12);color:var(--draw)}
+.empty{color:var(--muted);font-size:.85rem;padding:.5rem 0;font-style:italic}
+.score-chip{font-family:monospace;background:rgba(255,255,255,.06);padding:.1em .4em;border-radius:4px}
+.section-note{font-size:.78rem;color:var(--muted);margin-bottom:.75rem}
+.action-banner{background:rgba(196,168,79,.08);border:1px solid rgba(196,168,79,.25);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1.25rem;display:none;align-items:center;justify-content:space-between}
+.action-banner.show{display:flex}
+</style>
+</head>
+<body>
+<header>
+  <h1>Player Portal — Sealed League</h1>
+  <nav>
+    <a href="/">Standings</a>
+    <a href="/admin">Admin</a>
+    <a href="#" id="logoutLink" onclick="logout()" style="color:var(--loss);display:none">Log out</a>
+  </nav>
+</header>
+<main>
+
+  <!-- Auth -->
+  <div id="authSection">
+    <div class="auth-box">
+      <h2>Player Login</h2>
+      <div class="field">
+        <label>Your Token</label>
+        <input type="password" id="tokenInput" placeholder="Paste your player token…"
+               onkeydown="if(event.key==='Enter')login()">
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="login()">Enter</button>
+      <div id="authMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- Portal (hidden until logged in) -->
+  <div id="portalSection" style="display:none">
+
+    <!-- Action banner: needs validation -->
+    <div class="action-banner" id="actionBanner">
+      <span id="actionBannerText" style="font-size:.88rem;color:var(--accent2)"></span>
+      <button class="btn-success btn-sm" onclick="scrollToSection('incomingSection')">Review ↓</button>
+    </div>
+
+    <!-- My standing -->
+    <div class="card" id="standingCard">
+      <div class="card-title" id="tournamentLabel">Standing</div>
+      <div id="standingBody"></div>
+    </div>
+
+    <!-- Report a game -->
+    <div class="card" id="reportCard">
+      <div class="card-title">Report a Game Result</div>
+      <div id="reportNotEnrolled" class="empty" style="display:none">
+        You are not enrolled in the active tournament. Ask the admin to add you.
+      </div>
+      <div id="reportForm" style="display:none">
+        <div class="field">
+          <label>Opponent</label>
+          <select id="opponentSelect" onchange="updatePreview()"></select>
+        </div>
+        <div class="field">
+          <label>Game scores (best of 3)</label>
+          <div class="score-grid">
+            <div class="field" style="margin:0">
+              <div style="font-size:.72rem;color:var(--muted);text-align:center;margin-bottom:.28rem" id="myScoreLabel">My wins</div>
+              <input type="number" id="myWins" min="0" max="2" value="2" oninput="updatePreview()">
+            </div>
+            <div class="score-sep">–</div>
+            <div class="field" style="margin:0">
+              <div style="font-size:.72rem;color:var(--muted);text-align:center;margin-bottom:.28rem" id="oppScoreLabel">Opp wins</div>
+              <input type="number" id="oppWins" min="0" max="2" value="0" oninput="updatePreview()">
+            </div>
+            <div class="score-sep" style="font-size:.85rem">+</div>
+            <div class="field" style="margin:0">
+              <div style="font-size:.72rem;color:var(--muted);text-align:center;margin-bottom:.28rem">Drawn</div>
+              <input type="number" id="gameDraws" min="0" max="3" value="0" oninput="updatePreview()">
+            </div>
+          </div>
+          <div class="score-hint">Valid: 2-0, 2-1, 0-2, 1-2, or a played-out draw (3 total games, e.g. 1-1-1).</div>
+          <div id="reportPreview" class="preview">—</div>
+        </div>
+        <button class="btn-primary" onclick="reportGame()">Report Game</button>
+        <div id="reportMsg" class="msg"></div>
+        <p class="section-note" style="margin-top:.6rem">
+          Result goes <strong>pending</strong> until your opponent confirms it. They will see it under "Needs your confirmation."
+        </p>
+      </div>
+    </div>
+
+    <!-- Incoming: games needing MY confirmation -->
+    <div class="card" id="incomingSection">
+      <div class="card-title">Needs Your Confirmation</div>
+      <div id="incomingList"></div>
+    </div>
+
+    <!-- My game history -->
+    <div class="card">
+      <div class="card-title">My Games — Active Tournament</div>
+      <div id="myGamesList"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const API = '';
+let myToken = '';
+let myId = null;
+let activeTournamentId = null;
+
+const saved = localStorage.getItem('playerToken');
+if (saved) {
+  document.getElementById('tokenInput').value = saved;
+  login();
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────
+
+async function login() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) return;
+  try {
+    const res = await fetch(`${API}/api/me`, { headers: { Authorization: `Bearer ${t}` } });
+    if (!res.ok) throw new Error('Invalid token');
+    const me = await res.json();
+    myToken = t;
+    myId = me.id;
+    localStorage.setItem('playerToken', t);
+    document.getElementById('authSection').style.display = 'none';
+    document.getElementById('portalSection').style.display = '';
+    document.getElementById('logoutLink').style.display = '';
+    await refresh(me);
+  } catch(e) {
+    showMsg('authMsg', e.message, true);
+  }
+}
+
+function logout() {
+  localStorage.removeItem('playerToken');
+  location.reload();
+}
+
+function hdr() { return { 'Authorization': `Bearer ${myToken}`, 'Content-Type': 'application/json' }; }
+
+// ── Full refresh ──────────────────────────────────────────────────────
+
+async function refresh(meData) {
+  if (!meData) {
+    const res = await fetch(`${API}/api/me`, { headers: hdr() });
+    meData = await res.json();
+  }
+  activeTournamentId = meData.tournament?.id ?? null;
+  renderStanding(meData);
+  await renderReportForm();         // sets up opponent list
+  await renderIncoming();           // games needing my action
+  await renderMyGames();            // history
+}
+
+// ── Standing ──────────────────────────────────────────────────────────
+
+function renderStanding(me) {
+  const label = me.tournament
+    ? `${esc(me.tournament.name)} (${me.tournament.status})`
+    : 'No active tournament';
+  document.getElementById('tournamentLabel').textContent = `Standing — ${label}`;
+
+  const el = document.getElementById('standingBody');
+  const s = me.standing;
+  if (!s) {
+    el.innerHTML = '<div class="empty">Not enrolled in active tournament.</div>';
+    return;
+  }
+  const mpr = s.total_matches > 0 ? (s.match_points_rate * 100).toFixed(1) + '%' : '—';
+  const gwr = s.total_games > 0 ? (s.game_win_rate * 100).toFixed(1) + '%' : '—';
+  el.innerHTML = `
+    <div style="font-size:.95rem;margin-bottom:.75rem">
+      Rank <strong style="color:var(--accent2);font-size:1.3rem">#${s.rank}</strong>
+      &nbsp;·&nbsp;
+      <span style="color:var(--win)">${s.match_wins}W</span>
+      <span style="color:var(--muted)">&thinsp;–&thinsp;</span>
+      <span style="color:var(--draw)">${s.match_draws}D</span>
+      <span style="color:var(--muted)">&thinsp;–&thinsp;</span>
+      <span style="color:var(--loss)">${s.match_losses}L</span>
+    </div>
+    <div class="standing-row">
+      <div class="stat"><div class="stat-val" style="color:var(--accent2)">${mpr}</div><div class="stat-label">Match Pts Rate</div></div>
+      <div class="stat"><div class="stat-val">${s.match_points}</div><div class="stat-label">Match Points</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--muted)">${gwr}</div><div class="stat-label">Game Win Rate</div></div>
+    </div>`;
+}
+
+// ── Report form ───────────────────────────────────────────────────────
+
+async function renderReportForm() {
+  const form = document.getElementById('reportForm');
+  const notEnrolled = document.getElementById('reportNotEnrolled');
+
+  if (!activeTournamentId) {
+    form.style.display = 'none';
+    notEnrolled.style.display = '';
+    notEnrolled.textContent = 'No active tournament.';
+    return;
+  }
+
+  const res = await fetch(`${API}/api/tournaments/${activeTournamentId}/standings`);
+  const standings = await res.json();
+  const enrolled = standings.find(s => s.player_id === myId);
+
+  if (!enrolled) {
+    form.style.display = 'none';
+    notEnrolled.style.display = '';
+    return;
+  }
+
+  const opponents = standings.filter(s => s.player_id !== myId);
+  const sel = document.getElementById('opponentSelect');
+  sel.innerHTML = opponents.length
+    ? opponents.map(s => `<option value="${s.player_id}">${esc(s.player_name)}</option>`).join('')
+    : '<option disabled>No other players in tournament</option>';
+
+  form.style.display = opponents.length ? '' : 'none';
+  notEnrolled.style.display = opponents.length ? 'none' : '';
+  if (opponents.length === 0) notEnrolled.textContent = 'No other players in the tournament yet.';
+
+  updatePreview();
+}
+
+function updatePreview() {
+  const sel = document.getElementById('opponentSelect');
+  const oppName = sel.options[sel.selectedIndex]?.text || '?';
+  const w1 = parseInt(document.getElementById('myWins').value) || 0;
+  const w2 = parseInt(document.getElementById('oppWins').value) || 0;
+  const d  = parseInt(document.getElementById('gameDraws').value) || 0;
+  const el = document.getElementById('reportPreview');
+  const total = w1 + w2 + d;
+
+  if (total < 1 || total > 3 || w1 > 2 || w2 > 2) {
+    el.className = 'preview err'; el.textContent = '⚠ Invalid score'; return;
+  }
+  if (w1 < 2 && w2 < 2 && total < 3) {
+    el.className = 'preview err'; el.textContent = '⚠ Match not finished (need 2 wins or 3 total games)'; return;
+  }
+  el.className = 'preview';
+  const score = d > 0 ? `${w1}–${w2}–${d}d` : `${w1}–${w2}`;
+  if (w1 > w2) el.textContent = `You win ${score} vs ${oppName}`;
+  else if (w2 > w1) el.textContent = `${oppName} wins ${score}`;
+  else el.textContent = `Draw ${score} vs ${oppName}`;
+}
+
+async function reportGame() {
+  const sel = document.getElementById('opponentSelect');
+  const opponentId = parseInt(sel.value);
+  const w1 = parseInt(document.getElementById('myWins').value) || 0;
+  const w2 = parseInt(document.getElementById('oppWins').value) || 0;
+  const d  = parseInt(document.getElementById('gameDraws').value) || 0;
+
+  const res = await fetch(`${API}/api/games`, {
+    method: 'POST', headers: hdr(),
+    body: JSON.stringify({ opponent_id: opponentId, reporter_game_wins: w1, opponent_game_wins: w2, game_draws: d })
+  });
+  const data = await res.json();
+  if (!res.ok) { showMsg('reportMsg', data.error, true); return; }
+
+  document.getElementById('myWins').value = 2;
+  document.getElementById('oppWins').value = 0;
+  document.getElementById('gameDraws').value = 0;
+  updatePreview();
+  showMsg('reportMsg', `Reported! Waiting for ${esc(sel.options[sel.selectedIndex].text)} to confirm.`, false);
+  await renderMyGames();
+}
+
+// ── Incoming (needs my confirmation) ─────────────────────────────────
+
+async function renderIncoming() {
+  const el = document.getElementById('incomingList');
+  const banner = document.getElementById('actionBanner');
+
+  const res = await fetch(`${API}/api/games/pending`, { headers: hdr() });
+  const games = await res.json();
+
+  if (!games.length) {
+    el.innerHTML = '<div class="empty">Nothing needs your confirmation right now.</div>';
+    banner.classList.remove('show');
+    return;
+  }
+
+  banner.classList.add('show');
+  document.getElementById('actionBannerText').textContent =
+    `${games.length} game${games.length > 1 ? 's' : ''} need${games.length === 1 ? 's' : ''} your confirmation`;
+
+  el.innerHTML = games.map(g => {
+    const score = scoreStr(g);
+    const resultText = matchResultText(g, myId);
+    return `<div class="game-item" id="game-${g.id}">
+      <div class="game-header">
+        <div>
+          <div class="game-title">
+            <strong>${esc(g.reporter.name)}</strong> reported:
+            <span class="score-chip">${score}</span>
+            — <em style="color:var(--muted)">${resultText}</em>
+          </div>
+          <div class="game-meta">Reported ${g.reported_at.substring(0,16)}</div>
+        </div>
+        <span class="badge badge-pending-in">Needs your action</span>
+      </div>
+      <div class="game-actions">
+        <button class="btn-success btn-sm" onclick="act(${g.id},'confirm')">✓ Confirm result</button>
+        <button class="btn-danger btn-sm" onclick="act(${g.id},'dispute')">✗ Dispute</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function act(id, action) {
+  const res = await fetch(`${API}/api/games/${id}/${action}`, { method: 'POST', headers: hdr() });
+  const data = await res.json();
+  if (!res.ok) { alert(data.error); return; }
+  await refresh();
+}
+
+// ── My games ──────────────────────────────────────────────────────────
+
+async function renderMyGames() {
+  const el = document.getElementById('myGamesList');
+
+  const res = await fetch(`${API}/api/games/mine`, { headers: hdr() });
+  const games = await res.json();
+
+  if (!games.length) { el.innerHTML = '<div class="empty">No games in active tournament yet.</div>'; return; }
+
+  el.innerHTML = games.map(g => {
+    const iAmReporter = g.reporter.id === myId;
+    const opponent = iAmReporter ? g.opponent : g.reporter;
+    const myGW  = iAmReporter ? g.reporter_game_wins : g.opponent_game_wins;
+    const oppGW = iAmReporter ? g.opponent_game_wins : g.reporter_game_wins;
+    const score = g.game_draws > 0 ? `${myGW}–${oppGW}–${g.game_draws}d` : `${myGW}–${oppGW}`;
+
+    let statusBadge, resultBadge = '';
+    if (g.status === 'confirmed') {
+      const iWon  = (iAmReporter && g.match_result === 'reporter_win') || (!iAmReporter && g.match_result === 'opponent_win');
+      const isDraw = g.match_result === 'draw';
+      resultBadge = isDraw
+        ? `<span class="badge badge-draw">Draw</span>`
+        : iWon
+          ? `<span class="badge badge-win">Win</span>`
+          : `<span class="badge badge-loss">Loss</span>`;
+      statusBadge = '';
+    } else if (g.status === 'pending') {
+      statusBadge = iAmReporter
+        ? `<span class="badge badge-pending-out">Awaiting confirmation</span>`
+        : `<span class="badge badge-pending-in">Needs your action</span>`;
+    } else {
+      statusBadge = `<span class="badge badge-disputed">Disputed</span>`;
+    }
+
+    const meta = g.status === 'confirmed'
+      ? `Confirmed ${g.confirmed_at?.substring(0,10) ?? ''}`
+      : `Reported ${g.reported_at.substring(0,10)}`;
+
+    return `<div class="game-item">
+      <div class="game-header">
+        <div>
+          <div class="game-title">
+            ${resultBadge}
+            ${resultBadge ? ' ' : ''}vs <strong>${esc(opponent.name)}</strong>
+            <span class="score-chip">${score}</span>
+          </div>
+          <div class="game-meta">${meta} ${iAmReporter ? '· you reported' : '· they reported'}</div>
+        </div>
+        ${statusBadge}
+      </div>
+      ${g.status === 'pending' && !iAmReporter ? `
+      <div class="game-actions">
+        <button class="btn-success btn-sm" onclick="act(${g.id},'confirm')">✓ Confirm</button>
+        <button class="btn-danger btn-sm" onclick="act(${g.id},'dispute')">✗ Dispute</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+function scoreStr(g) {
+  return g.game_draws > 0
+    ? `${g.reporter_game_wins}–${g.opponent_game_wins}–${g.game_draws}d`
+    : `${g.reporter_game_wins}–${g.opponent_game_wins}`;
+}
+
+function matchResultText(g, viewerId) {
+  const r = g.match_result;
+  const reporterIsViewer = g.reporter.id === viewerId;
+  if (r === 'draw') return 'Draw';
+  if ((r === 'reporter_win') === reporterIsViewer) return 'You win';
+  return `${esc(g.reporter.name)} wins`;
+}
+
+function scrollToSection(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showMsg(id, text, isErr) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg ' + (isErr ? 'err' : 'ok');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'msg'; }, 6000);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sealed League</title>
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a24;
+    --border: #2e2e42;
+    --accent: #7c5cbf;
+    --accent2: #c4a84f;
+    --text: #e8e8f0;
+    --muted: #888899;
+    --win: #4caf7d;
+    --loss: #e05c5c;
+    --draw: #c4a84f;
+    --pending: #6a9fd8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 1.4rem; color: var(--accent2); letter-spacing: 0.05em; }
+  header h1 span { color: var(--muted); font-size: 0.9rem; font-weight: 400; margin-left: 0.5rem; }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 1.5rem; font-size: 0.9rem; }
+  nav a:hover { color: var(--text); }
+  main { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
+  .section-title { color: var(--accent2); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.75rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th { color: var(--muted); font-weight: 500; text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; letter-spacing: 0.04em; }
+  td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .rank { color: var(--muted); font-weight: 600; }
+  .rank-1 { color: var(--accent2); }
+  .rank-2 { color: #aaa; }
+  .rank-3 { color: #a07050; }
+  .mpr { font-weight: 600; }
+  .badge { display: inline-block; font-size: 0.72rem; padding: 0.2em 0.5em; border-radius: 4px; font-weight: 600; }
+  .badge-win { background: rgba(76,175,125,0.15); color: var(--win); }
+  .badge-loss { background: rgba(224,92,92,0.15); color: var(--loss); }
+  .badge-draw { background: rgba(196,168,79,0.15); color: var(--draw); }
+  .badge-pending { background: rgba(106,159,216,0.15); color: var(--pending); }
+  .score { font-family: monospace; font-size: 0.95rem; }
+  .empty { color: var(--muted); font-size: 0.9rem; padding: 1rem 0; text-align: center; }
+  .tournament-selector { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+  select { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.9rem; }
+  .wld { color: var(--muted); font-size: 0.85rem; }
+  .wld .w { color: var(--win); }
+  .wld .d { color: var(--draw); }
+  .wld .l { color: var(--loss); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } nav { display: none; } }
+  .tooltip { position: relative; cursor: help; border-bottom: 1px dashed var(--muted); }
+  .ranking-note { background: rgba(124,92,191,0.08); border: 1px solid rgba(124,92,191,0.2); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--muted); }
+  .ranking-note strong { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sealed League <span id="tournamentName">Loading…</span></h1>
+  <nav>
+    <a href="/player">Player Portal</a>
+    <a href="/admin">Admin</a>
+  </nav>
+</header>
+<main>
+  <div class="tournament-selector">
+    <span class="section-title" style="margin:0">Tournament:</span>
+    <select id="tournamentSelect" onchange="onTournamentChange()"></select>
+  </div>
+
+  <div class="ranking-note">
+    Ranked by <strong>Match Points Rate</strong> = (3W + D) / (3N) — fraction of possible match points earned.
+    Tiebreaker: <strong>Game Win Rate</strong>. This normalises fairly when players have played different numbers of matches.
+  </div>
+
+  <div class="card">
+    <div class="section-title">Standings</div>
+    <table id="standingsTable">
+      <thead><tr>
+        <th>#</th><th>Player</th><th>W-D-L</th><th>Pts</th>
+        <th class="tooltip" title="(3W+D)/(3N)">MPR</th>
+        <th class="tooltip" title="Game wins / total games">GWR</th>
+      </tr></thead>
+      <tbody id="standingsBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="section-title">Recent Games</div>
+      <div id="gamesList"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">About Rankings</div>
+      <div style="font-size:0.85rem;color:var(--muted);line-height:1.7">
+        <p style="margin-bottom:0.6rem"><strong style="color:var(--text)">Match Points Rate (used)</strong><br>
+        Percentage of maximum possible match points. Win=3pts, Draw=1pt. Best for unequal game counts.</p>
+        <p style="margin-bottom:0.6rem"><strong style="color:var(--text)">Win Rate</strong><br>
+        W/N — simpler but ignores draws.</p>
+        <p style="margin-bottom:0.6rem"><strong style="color:var(--text)">Raw Points</strong><br>
+        3W+D — rewards playing more games.</p>
+        <p><strong style="color:var(--text)">ELO</strong><br>
+        Dynamic, accounts for opponent strength. Needs many games to converge.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = '';
+let currentTournamentId = null;
+
+async function loadTournaments() {
+  const res = await fetch(`${API}/api/tournaments`);
+  const data = await res.json();
+  const sel = document.getElementById('tournamentSelect');
+  sel.innerHTML = '';
+  if (!data.length) {
+    sel.innerHTML = '<option>No tournaments yet</option>';
+    document.getElementById('tournamentName').textContent = '';
+    return;
+  }
+  data.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = `${t.name}${t.status === 'active' ? ' (active)' : ' (archived)'}`;
+    sel.appendChild(opt);
+  });
+  // Pre-select from ?t= param, else active, else first
+  const paramId = new URLSearchParams(location.search).get('t');
+  const preferred = paramId ? data.find(t => String(t.id) === paramId) : null;
+  const active = data.find(t => t.status === 'active');
+  sel.value = (preferred || active || data[0]).id;
+  onTournamentChange();
+}
+
+function onTournamentChange() {
+  const sel = document.getElementById('tournamentSelect');
+  currentTournamentId = sel.value;
+  const name = sel.options[sel.selectedIndex]?.textContent || '';
+  document.getElementById('tournamentName').textContent = '— ' + name;
+  loadStandings(currentTournamentId);
+  loadGames(currentTournamentId);
+}
+
+async function loadStandings(id) {
+  const tbody = document.getElementById('standingsBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  try {
+    const res = await fetch(`${API}/api/tournaments/${id}/standings`);
+    const data = await res.json();
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No players yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(s => {
+      const rankClass = s.rank <= 3 ? `rank-${s.rank}` : '';
+      const mpr = (s.match_points_rate * 100).toFixed(1) + '%';
+      const gwr = s.total_games > 0 ? (s.game_win_rate * 100).toFixed(1) + '%' : '—';
+      return `<tr>
+        <td class="rank ${rankClass}">${s.rank}</td>
+        <td><strong>${esc(s.player_name)}</strong></td>
+        <td>${s.match_wins}-${s.match_draws}-${s.match_losses}</td>
+        <td>${s.match_points}</td>
+        <td class="mpr">${mpr}</td>
+        <td style="color:var(--muted)">${gwr}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Failed to load</td></tr>';
+  }
+}
+
+async function loadGames(id) {
+  const el = document.getElementById('gamesList');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const res = await fetch(`${API}/api/tournaments/${id}/games`);
+    const data = await res.json();
+    if (!data.length) {
+      el.innerHTML = '<div class="empty">No confirmed games yet</div>';
+      return;
+    }
+    el.innerHTML = data.slice(0, 20).map(g => {
+      const [rName, oName] = [esc(g.reporter.name), esc(g.opponent.name)];
+      const score = `${g.reporter_game_wins}-${g.opponent_game_wins}`;
+      const extra = g.game_draws > 0 ? `-${g.game_draws}d` : '';
+      let winner;
+      if (g.match_result === 'reporter_win') {
+        winner = `<strong>${rName}</strong> beat ${oName}`;
+      } else if (g.match_result === 'opponent_win') {
+        winner = `<strong>${oName}</strong> beat ${rName}`;
+      } else {
+        winner = `${rName} drew with ${oName}`;
+      }
+      return `<div style="padding:0.5rem 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem">
+        <span>${winner}</span>
+        <span class="score" style="color:var(--muted);white-space:nowrap">${score}${extra}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="empty">Failed to load</div>';
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+loadTournaments();
+</script>
+</body>
+</html>
