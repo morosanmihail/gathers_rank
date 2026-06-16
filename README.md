@@ -1,4 +1,4 @@
-# League Scoring
+# GatheRs Rank
 
 Self-hosted league/tournament tracker. Players report match results; opponents confirm them. Admins manage tournaments and players via a token-based API.
 
